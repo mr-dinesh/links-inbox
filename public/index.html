@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Links inbox</title>
+<meta name="theme-color" content="#1f2a3a">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Links inbox</h1>
+    <p class="sub">Publishes to <a href="https://mrdee.in/links/">mrdee.in/links</a> at 23:30 IST</p>
+  </header>
+
+  <form id="login" hidden>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <button>Unlock</button>
+  </form>
+
+  <section id="app" hidden>
+    <form id="add">
+      <label for="url">Link</label>
+      <input id="url" type="url" inputmode="url" placeholder="https://" required>
+      <label for="title">Title <span class="hint">blank = fetch from the page</span></label>
+      <input id="title" type="text" maxlength="200">
+      <label for="note">Note <span class="hint">optional, one line</span></label>
+      <input id="note" type="text" maxlength="500" placeholder="why it's worth reading">
+      <button id="save">Save to queue</button>
+    </form>
+
+    <p id="status" role="status"></p>
+
+    <div class="queue-head">
+      <h2>Queued <span id="count"></span></h2>
+      <button id="publish" class="ghost">Publish now</button>
+    </div>
+    <ul id="queue"></ul>
+    <p id="empty" class="hint" hidden>Nothing queued. Share a link to this app from any browser.</p>
+
+    <button id="logout" class="link">Forget password on this device</button>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+name = "links-inbox"
+main = "worker.js"
+compatibility_date = "2026-04-22"
+workers_dev = true
+
+# The share UI (HTML, manifest, service worker, icons). Anything not found here
+# falls through to worker.js, which only answers /api/*.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Queued links, one key per link: q:<IST date>:<ms>-<rand>
+[[kv_namespaces]]
+binding = "LINKS"
+id = "02de7dc5b97345299bb3a38627f46fac"
+
+# 18:00 UTC = 23:30 IST: commit each day's queue to the blog repo
+[triggers]
+crons = ["0 18 * * *"]
+
+[vars]
+GITHUB_REPO = "mr-dinesh/digital-journal"
+GITHUB_BRANCH = "main"
+
+# Secrets (set with `wrangler secret put`, never in this file):
+#   ADMIN_PASSWORD  the password the phone app sends
+#   GITHUB_TOKEN    fine-grained PAT: digital-journal only, Contents read/write

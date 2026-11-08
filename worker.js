@@ -48,7 +48,9 @@ export default {
         const key = decodeURIComponent(del[1]);
         if (!key.startsWith("q:")) throw new HttpError(400, "Bad key");
         await env.LINKS.delete(key);
-        return json({ ok: true });
+        // KV list() lags writes by up to ~60 s, so filter the deleted key out here
+        const queue = (await listQueue(env)).filter(i => i.key !== key);
+        return json({ ok: true, queue });
       }
       return json({ error: "Not found" }, 404);
     } catch (e) {
@@ -90,14 +92,17 @@ async function addLink(body, env) {
 
   const queue = await listQueue(env);
   const dup = queue.find(i => i.url === url);
-  if (dup) return { ...dup, duplicate: true };
+  if (dup) return { item: dup, queue, duplicate: true };
 
   let title = tidy(body.title);
   if (!title || /^https?:\/\//.test(title)) title = (await fetchTitle(url)) || new URL(url).hostname;
-  const item = { url, title, note: tidy(body.note, 500), ts: Date.now() };
-  const key = `q:${istDate(item.ts)}:${item.ts}-${Math.random().toString(36).slice(2, 6)}`;
-  await env.LINKS.put(key, JSON.stringify(item));
-  return { key, ...item };
+  const ts = Date.now();
+  const key = `q:${istDate(ts)}:${ts}-${Math.random().toString(36).slice(2, 6)}`;
+  const item = { key, url, title, note: tidy(body.note, 500), ts };
+  await env.LINKS.put(key, JSON.stringify({ url, title, note: item.note, ts }));
+  // KV list() is eventually consistent: a list right after this put can miss
+  // the new key, which is what made the count read one short. Merge it in.
+  return { item, queue: [...queue, item].sort((a, b) => a.ts - b.ts) };
 }
 
 async function listQueue(env) {
@@ -108,8 +113,12 @@ async function listQueue(env) {
     keys.push(...page.keys.map(k => k.name));
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
-  const items = await Promise.all(keys.map(async key => ({ key, ...JSON.parse(await env.LINKS.get(key)) })));
-  return items.sort((a, b) => a.ts - b.ts);
+  // A stale list can still name a key that was just deleted; get() then returns null
+  const items = await Promise.all(keys.map(async key => {
+    const raw = await env.LINKS.get(key);
+    return raw && { key, ...JSON.parse(raw) };
+  }));
+  return items.filter(Boolean).sort((a, b) => a.ts - b.ts);
 }
 
 const tidy = (s, max = 200) => String(s || "").replace(/\s+/g, " ").trim().slice(0, max);

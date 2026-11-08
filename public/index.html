@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Links inbox</title>
-<meta name="theme-color" content="#1f2a3a">
+<meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151412" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
@@ -38,7 +39,7 @@
     <p id="status" role="status"></p>
 
     <div class="queue-head">
-      <h2>Queued <span id="count"></span></h2>
+      <h2>Queued <span id="count" class="count" hidden></span></h2>
       <button id="publish" class="ghost">Publish now</button>
     </div>
     <ul id="queue"></ul>

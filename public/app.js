@@ -44,29 +44,40 @@ function prefillFromShare() {
   $("note").focus();
 }
 
-async function refresh() {
-  const items = await api("/api/queue");
-  const ul = $("queue");
-  ul.replaceChildren(...items.map(i => {
-    const li = document.createElement("li");
-    const a = document.createElement("a");
-    a.href = i.url; a.textContent = i.title; a.target = "_blank"; a.rel = "noopener";
-    const meta = document.createElement("span");
-    meta.className = "meta";
-    meta.textContent = `${new URL(i.url).hostname.replace(/^www\./, "")} · ${i.key.split(":")[1]}`;
-    li.append(a, meta);
-    if (i.note) { const n = document.createElement("span"); n.className = "note"; n.textContent = i.note; li.append(n); }
-    const del = document.createElement("button");
-    del.className = "del"; del.textContent = "×"; del.title = "Remove from queue";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const shortDate = ymd => { const [, m, d] = ymd.split("-"); return `${+d} ${MONTHS[m - 1]}`; };
+const host = url => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } };
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+
+function render(items) {
+  $("queue").replaceChildren(...items.map(i => {
+    const li = el("li");
+    const a = el("a", "title", i.title);
+    a.href = i.url; a.target = "_blank"; a.rel = "noopener";
+    const date = i.key.split(":")[1];
+    const src = el("p", "src");
+    src.append(host(i.url), el("span", "sep", "·"));
+    const t = el("time", "", shortDate(date)); t.dateTime = date; src.append(t);
+    li.append(a, src);
+    if (i.note) li.append(el("p", "note", i.note));
+    const del = el("button", "del", "×");
+    del.type = "button"; del.title = "Remove from queue";
     del.setAttribute("aria-label", `Remove ${i.title}`);
-    del.onclick = async () => { del.disabled = true; await api(`/api/links/${encodeURIComponent(i.key)}`, { method: "DELETE" }); refresh(); };
+    del.onclick = async () => {
+      del.disabled = true;
+      try { render((await api(`/api/links/${encodeURIComponent(i.key)}`, { method: "DELETE" })).queue); }
+      catch (err) { del.disabled = false; if (err.message !== "401") say(err.message, "err"); }
+    };
     li.append(del);
     return li;
   }));
-  $("count").textContent = items.length ? `(${items.length})` : "";
+  $("count").textContent = items.length || "";
+  $("count").hidden = !items.length;
   $("empty").hidden = items.length > 0;
   $("publish").disabled = items.length === 0;
 }
+
+async function refresh() { render(await api("/api/queue")); }
 
 $("login").onsubmit = async e => {
   e.preventDefault();
@@ -84,9 +95,9 @@ $("add").onsubmit = async e => {
       method: "POST",
       body: JSON.stringify({ url: $("url").value, title: $("title").value, note: $("note").value }),
     });
-    say(r.duplicate ? "Already queued." : `Saved: ${r.title}`, "ok");
+    say(r.duplicate ? "Already queued." : `Saved: ${r.item.title}`, "ok");
     $("add").reset();
-    refresh();
+    render(r.queue);
   } catch (err) {
     if (err.message !== "401") say(err.message, "err");
   } finally {
